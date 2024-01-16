@@ -24,28 +24,53 @@ class Main(pyglet.window.Window):
                 del collidablelist[-1]
         except:
             pass
+        
+        
         if symbol == key.UP:
             if testplayer.detectcollision(collidablelist, 0, -20):
                 return
             else:
                 testplayer.move(0, 20)
+                collidablelist[-1][0].behaviour(testplayer, 0, 1)
         if symbol == key.DOWN:
             if testplayer.detectcollision(collidablelist, 0, 20):
                 return
             else:
                 testplayer.move(0, -20)
+                collidablelist[-1][0].behaviour(testplayer, 0, -1)
         if symbol == key.RIGHT:
             if testplayer.detectcollision(collidablelist, -20, 0):
                 return
             else:
                 testplayer.move(20, 0)
+                collidablelist[-1][0].behaviour(testplayer, 1, 0)
         if symbol == key.LEFT:
             if testplayer.detectcollision(collidablelist, 20, 0):
                 return
             else:
                 testplayer.move(-20, 0)
+                collidablelist[-1][0].behaviour(testplayer, -1, 0)
     def on_mouse_press(self, x, y, button, modifiers):
         print(x, y)
+    #this handles enemy turns for now, as they should be done AFTER the player moves
+    def on_key_release(self, symbol, modifiers):
+        if testtroll.detectcollision([[testplayer]], -20, 0):
+            testtroll.attack(testplayer)
+        elif testtroll.detectcollision([[testplayer]], 20, 0):
+            testtroll.attack(testplayer)
+        elif testtroll.detectcollision([[testplayer]], 0, 20):
+            testtroll.attack(testplayer)
+        elif testtroll.detectcollision([[testplayer]], 0, -20):
+            testtroll.attack(testplayer)
+
+        if testsnake.detectcollision([[testplayer]], 20, 0):
+            testsnake.attack(testplayer)
+        elif testsnake.detectcollision([[testplayer]], -20, 0):
+            testsnake.attack(testplayer)
+        elif testsnake.detectcollision([[testplayer]], 0, 20):
+            testsnake.attack(testplayer)
+        elif testsnake.detectcollision([[testplayer]], 0, -20):
+            testsnake.attack(testplayer)
     def render(self):
         self.clear()
 
@@ -116,11 +141,9 @@ class TileSet():
 
 #entities should accept their coordinates in grid coordinates, not real coordinates
 class Entity(Tile):
-    def __init__(self, image, x, y, z, batch, group, health, speed,atkdmg, atkspeed):
+    def __init__(self, image, x, y, z, batch, group, health, atkdmg):
         super().__init__(image, x, y, z, batch, group)
         self.health = health
-        self.speed = speed
-        self.atkspeed = atkspeed
         self.atkdmg = atkdmg
     def move(self, xchange, ychange):
         self.x += xchange
@@ -140,35 +163,60 @@ class Entity(Tile):
     def checkdelete(self):
         if self.health <= 0:
             self.__del__()
+    def attack(self, other):
+        other.health -= self.atkdmg
+        other.checkdelete()
+        #this is a hack so that we will also get dmg when attacked, but this should be done inside Enemy class, not here
+        print(other.health)
 
 class Player(Entity):
-    def __init__(self, image, x, y, z, batch, group, health, speed, atkdmg, atkspeed):
-        super().__init__(image, x, y, z,  batch, group, health, speed, atkdmg, atkspeed)
+    def __init__(self, image, x, y, z, batch, group, health,atkdmg):
+        super().__init__(image, x, y, z,  batch, group, health, atkdmg)
     def attack(self, other):
         other.health -= self.atkdmg
         other.checkdelete()
         #this is a hack so that we will also get dmg when attacked, but this should be done inside Enemy class, not here
         print(other.health)
     def pickup(self, other):
-        pass
+        #this is a hack, all items have nearly 0 hp, so they "die" when pickedup
+        self.attack(other)
+        self.pickeditems = [other]
     def checktheinteraction(self, touched):
         if type(touched)==StairCase:
             print("going next level lol")
         if type(touched)==Enemy:
             self.attack(touched)    
-
+        if type(touched)==Item:
+            self.pickup(touched)
 class Enemy(Entity):
-    def __init__(self, image, x, y, z, batch, group, health, speed, atkdmg, atkspeed):
-        super().__init__(image, x, y, z, batch, group, health, speed, atkdmg, atkspeed)
+    def __init__(self, image, x, y, z, batch, group, health, atkdmg):
+        super().__init__(image, x, y, z, batch, group, health, atkdmg)
     def checktheinteraction(self, touched):
         pass
-class StairCase(Entity):
-    def __init__(self, image, x, y, z, batch, group, health, speed, atkdmg, atkspeed):
-        super().__init__(image, x, y, z, batch, group, health, speed, atkdmg, atkspeed)
 
+#defining enemies
+#higher level  of abstraction
+#this enemy doesn't move, and only attacks the player when close
+class Troll(Enemy):
+    def __init__(self, image, x, y, z, batch, group, health = 100, atkdmg = 10):
+        super().__init__(image, x, y, z, batch, group, health, atkdmg)
+    
+class Snake(Enemy):
+    def __init__(self, image, x, y, z, batch, group, health = 30, atkdmg = 2):
+        super().__init__(image, x, y, z, batch, group, health, atkdmg)
+    def behaviour(self, collidablelist, directionx, directiony):
+        if self.detectcollision(collidablelist[0], 60, 0):
+            if self.detectcollision(collidable)
+            self.move(20 * directionx, 20 * directiony)
+        
+
+class StairCase(Entity):
+    def __init__(self, image, x, y, z, batch, group, health, atkdmg = 0):
+        super().__init__(image, x, y, z, batch, group, health, atkdmg)
+#attributes from items should change attributes of player, or have special use cases.
 class Item(Entity):
-    def __init__(self, image, x, y, z, batch, group, health, speed, atkdmg, atkspeed):
-        super().__init__(image, x, y, z, batch, group, health, speed, atkdmg, atkspeed)
+    def __init__(self, image, x, y, z, batch, group, health, atkdmg):
+        super().__init__(image, x, y, z, batch, group, health, atkdmg)
 class GUI(pyglet.shapes.Rectangle):
     def __init__(self, x, y, width, height, color, batch=None, group=None):
         super().__init__(x, y, width, height, color, batch, group) 
@@ -307,11 +355,11 @@ tunnel2ndtoend = Tunnel(scndndroom.x1, scndndroom.y1 - 20, 1, -14, batch, backgr
 lastroom = Room(scndndroom.x1, scndndroom.y1 - (20*20), 6, 6, batch, background, ["up"], [1])
 
 #populating with entities
-testplayer = Player(tileset[100],220, 220, 1, batch, foreground, 10, 1, 10, 1)
-testenemy = Enemy(tileset[255], scndndroom.x4 + 40, scndndroom.y4 - 40, 0.1, batch, foreground, 40, 0, 0, 0)
+testplayer = Player(tileset[100],220, 220, 1, batch, foreground, 10, 10)
+testtroll = Troll(tileset[255], lastroom.x4 + 20, lastroom.y4 - 20, 0.1, batch, foreground)
+testsnake = Snake(tileset[255], scndndroom.x4 + 40, scndndroom.y4 - 40, 0.1, batch, foreground)
 
-
-teststaircase = StairCase(tileset[239], lastroom.x4 + 40, lastroom.y4 - 40, 0.1, batch, foreground, None, None, None, None)
+teststaircase = StairCase(tileset[239], lastroom.x4 + 40, lastroom.y4 - 40, 0.1, batch, foreground, None)
 
 #aggregate collidables into one big array so we can detect collisions
 #ofc this will need optimization, but not needed for the tests
@@ -328,9 +376,9 @@ for i in lastroom.collidable:
 collidablelist.append(tunnelstartto2nd.collidable)
 collidablelist.append(tunnel2ndtoend.collidable)
 collidablelist.append([teststaircase])
-collidablelist.append([testenemy])
+collidablelist.append([testtroll])
+collidablelist.append([testsnake])
 
-del testenemy
 
 x.run()
 
