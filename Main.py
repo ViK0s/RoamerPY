@@ -22,12 +22,22 @@ class Main(pyglet.window.Window):
     def on_key_press(self, symbol, modifiers):
         testgui.equipment = testplayer.pickeditems
         if symbol == key.NUM_1:
-            if len(testgui.equipment) >= 1:
-                print("tried using the potion")
-                testplayer.useitem(testgui.equipment[0])
-                testgui.ChangeColor(0, "green")
+            try:
+                if testgui.equipment[0]:
+                    testplayer.useitem(testgui.equipment[0], 0)
+                else:
+                    print("no item")
+            except:
+                pass
+        if symbol == key.NUM_2:
+            if testgui.equipment[1]:
+                testplayer.useitem(testgui.equipment[1], 1)
             else:
                 print("no item")
+        
+        
+        
+        
         #check health of every enemy
         for enemy in enemycollidable:
             if enemy[0].health <= 0:
@@ -222,7 +232,7 @@ class Player(Entity):
             self.attack(touched)    
         if issubclass(type(touched), Item):
             self.pickup(touched)
-    def useitem(self, equipment):
+    def useitem(self, equipment, pos):
         if equipment.name == "Health Potion":
             self.pickeditems.remove(equipment)
             self.health = self.maxhealth
@@ -231,11 +241,12 @@ class Player(Entity):
                 print("equiped item")
                 equipment.used = True
                 self.atkdmg += equipment.atkdmg
+                testgui.ChangeColor(pos, "green")
             else:
                 print("deequiped item")
                 equipment.used = False
                 self.atkdmg -= equipment.atkdmg
-            
+                testgui.ChangeColor(pos, "red")
 
 
 class Enemy(Entity):
@@ -320,17 +331,29 @@ class GUI(pyglet.shapes.BorderedRectangle):
         self.WriteInfo()
     def WriteInfo(self):
         self.equipmentlistlabel = []
-        healthlabel = pyglet.text.Label(str(self.player.health),
+        healthlabel = pyglet.text.Label("Health: " + str(self.player.health),
                           font_name='Times New Roman',
                           font_size=12,
                           x=self.x + 20, y=self.y + 700,
-                          anchor_x='center', anchor_y='center', batch=self.guibatch, group=bestground)
+                          anchor_x='left', anchor_y='bottom', batch=self.guibatch, group=bestground)
         
-        characternamelabel = pyglet.text.Label(str(self.player.atkdmg),
+        atkdmglabel = pyglet.text.Label("Attack damage: " + str(self.player.atkdmg),
                           font_name='Times New Roman',
                           font_size=12,
                           x=self.x + 20, y=self.y + 680,
-                          anchor_x='center', anchor_y='center', batch=self.guibatch, group=bestground)
+                          anchor_x='left', anchor_y='bottom', batch=self.guibatch, group=bestground)
+        
+        es = -1
+        statsname = ["str", "int", "wis", "dex", "con"]
+        for stats in self.player.stats:
+            es += 1
+            self.labelcolor.append((255, 0, 0, 100))
+            self.equipmentlistlabel.append(pyglet.text.Label(statsname[es] + ": " + str(stats),
+                          font_name='Times New Roman',
+                          font_size=12,
+                          x=(self.x + 240), y=(self.y + 500) + (es * -20),
+                          anchor_x='left', anchor_y='bottom', batch=self.guibatch, group=bestground))
+        
         bruh = -1
         
         for i in self.equipment:
