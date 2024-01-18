@@ -1,8 +1,9 @@
 #this  will be the file containing most of the gmae objects
 import pyglet
 import os
-#importing pyglet classes
-from pyglet import font
+import random
+
+
 
 key = pyglet.window.key
 
@@ -17,60 +18,75 @@ class Main(pyglet.window.Window):
         self.render()
     #handle inputs of a window
     #this is really inefficient stuff
+    #also, there's way too many nests here, it's hard to read
     def on_key_press(self, symbol, modifiers):
-        #this is a hack for a test enemy to work, this should be done differently
-        try:
-            if collidablelist[-1][0].health <= 0:
-                del collidablelist[-1]
-        except:
-            pass
+        testgui.equipment = testplayer.pickeditems
+        if symbol == key.NUM_1:
+            if len(testgui.equipment) >= 1:
+                print("tried using the potion")
+                testplayer.useitem(testgui.equipment[0])
+            else:
+                print("no item")
+        #check health of every enemy
+        for enemy in enemycollidable:
+            if enemy[0].health <= 0:
+                enemycollidable.remove(enemy)
         
+        for item in itemcollidable:
+            if item[0].health <= 0:
+                itemcollidable.remove(item)
         
+        #this function checks for all the collisions, including collisions with items, this is REALLY unreadable, and needs
+        #a total rewrite
         if symbol == key.UP:
-            if testplayer.detectcollision(collidablelist, 0, -20):
+            if testplayer.detectcollision(collidablelist, 0, -20) or testplayer.detectcollision(enemycollidable, 0, -20):
                 return
             else:
+                testplayer.detectcollision(itemcollidable, 0, -20)
                 testplayer.move(0, 20)
-                collidablelist[-1][0].behaviour(testplayer, 0, 1)
+                for enemy in enemycollidable:
+                    enemy[0].behaviour(collidablelist,testplayer, 0, -1)
         if symbol == key.DOWN:
-            if testplayer.detectcollision(collidablelist, 0, 20):
+            if testplayer.detectcollision(collidablelist, 0, 20) or testplayer.detectcollision(enemycollidable, 0, 20):
                 return
             else:
+                testplayer.detectcollision(itemcollidable, 0, 20)
                 testplayer.move(0, -20)
-                collidablelist[-1][0].behaviour(testplayer, 0, -1)
+                for enemy in enemycollidable:
+                    enemy[0].behaviour(collidablelist,testplayer, 0, -1)
         if symbol == key.RIGHT:
-            if testplayer.detectcollision(collidablelist, -20, 0):
+            if testplayer.detectcollision(collidablelist, -20, 0) or testplayer.detectcollision(enemycollidable, -20, 0):
                 return
             else:
+                testplayer.detectcollision(itemcollidable, -20, 0)
                 testplayer.move(20, 0)
-                collidablelist[-1][0].behaviour(testplayer, 1, 0)
+                for enemy in enemycollidable:
+                    enemy[0].behaviour(collidablelist,testplayer, -1, 0)
         if symbol == key.LEFT:
-            if testplayer.detectcollision(collidablelist, 20, 0):
+            if testplayer.detectcollision(collidablelist, 20, 0) or testplayer.detectcollision(enemycollidable, 20, 0):
                 return
             else:
+                testplayer.detectcollision(itemcollidable, 20, 0)
                 testplayer.move(-20, 0)
-                collidablelist[-1][0].behaviour(testplayer, -1, 0)
+                for enemy in enemycollidable:
+                    enemy[0].behaviour(collidablelist,testplayer, 1, 0)
     def on_mouse_press(self, x, y, button, modifiers):
-        print(x, y)
+        #print(x, y)
+        pass
+    def on_press(self, x, y, button, modifiers):
+        print("here i'm doing button press")
     #this handles enemy turns for now, as they should be done AFTER the player moves
     def on_key_release(self, symbol, modifiers):
-        if testtroll.detectcollision([[testplayer]], -20, 0):
-            testtroll.attack(testplayer)
-        elif testtroll.detectcollision([[testplayer]], 20, 0):
-            testtroll.attack(testplayer)
-        elif testtroll.detectcollision([[testplayer]], 0, 20):
-            testtroll.attack(testplayer)
-        elif testtroll.detectcollision([[testplayer]], 0, -20):
-            testtroll.attack(testplayer)
+        for enemy in enemycollidable:
+            if enemy[0].detectcollision([[testplayer]], -20, 0):
+                enemy[0].attack(testplayer)
+            elif enemy[0].detectcollision([[testplayer]], 20, 0):
+                enemy[0].attack(testplayer)
+            elif enemy[0].detectcollision([[testplayer]], 0, 20):
+                enemy[0].attack(testplayer)
+            elif enemy[0].detectcollision([[testplayer]], 0, -20):
+                enemy[0].attack(testplayer)
 
-        if testsnake.detectcollision([[testplayer]], 20, 0):
-            testsnake.attack(testplayer)
-        elif testsnake.detectcollision([[testplayer]], -20, 0):
-            testsnake.attack(testplayer)
-        elif testsnake.detectcollision([[testplayer]], 0, 20):
-            testsnake.attack(testplayer)
-        elif testsnake.detectcollision([[testplayer]], 0, -20):
-            testsnake.attack(testplayer)
     def render(self):
         self.clear()
 
@@ -78,6 +94,7 @@ class Main(pyglet.window.Window):
 
         #playerbatch.draw()
         batch.draw()
+        testgui.WriteInfo()
         self.flip()
 
     def run(self):
@@ -166,34 +183,55 @@ class Entity(Tile):
     def attack(self, other):
         other.health -= self.atkdmg
         other.checkdelete()
-        #this is a hack so that we will also get dmg when attacked, but this should be done inside Enemy class, not here
         print(other.health)
+    def RandomizeStats(self):
+        self.stats = []
+        #stats in a list, starting from index 0 is str, int, wis, dex, con
+        for i in range(0, 5):
+            self.stats.append(random.randint(10, 20))
+        
 
 class Player(Entity):
     def __init__(self, image, x, y, z, batch, group, health,atkdmg):
         super().__init__(image, x, y, z,  batch, group, health, atkdmg)
+        self.RandomizeStats()
+        self.pickeditems = []
     def attack(self, other):
         other.health -= self.atkdmg
         other.checkdelete()
         #this is a hack so that we will also get dmg when attacked, but this should be done inside Enemy class, not here
         print(other.health)
     def pickup(self, other):
-        #this is a hack, all items have nearly 0 hp, so they "die" when pickedup
+        bruh = -1
+        for i in other.stats:
+            bruh += 1
+            if i > self.stats[bruh]:
+                print("can't pick the item because you don't have the stats")
+                return
+        #this is a hack, all items have nearly 0 hp, so they "die" when picked up
         self.attack(other)
-        self.pickeditems = [other]
+        self.pickeditems.append(other.name)
+        print(self.pickeditems)
     def checktheinteraction(self, touched):
         if type(touched)==StairCase:
             print("going next level lol")
-        if type(touched)==Enemy:
+        if issubclass(type(touched), Enemy):
             self.attack(touched)    
-        if type(touched)==Item:
+        if issubclass(type(touched), Item):
             self.pickup(touched)
+    def useitem(self, equipment):
+        self.pickeditems.remove(equipment)
+    
+
+
 class Enemy(Entity):
     def __init__(self, image, x, y, z, batch, group, health, atkdmg):
         super().__init__(image, x, y, z, batch, group, health, atkdmg)
     def checktheinteraction(self, touched):
         pass
-
+    #this is the default behaviour for enemies
+    def behaviour(self, collidablelist, player, directionx, directiony):
+        pass
 #defining enemies
 #higher level  of abstraction
 #this enemy doesn't move, and only attacks the player when close
@@ -204,25 +242,89 @@ class Troll(Enemy):
 class Snake(Enemy):
     def __init__(self, image, x, y, z, batch, group, health = 30, atkdmg = 2):
         super().__init__(image, x, y, z, batch, group, health, atkdmg)
-    def behaviour(self, collidablelist, directionx, directiony):
-        if self.detectcollision(collidablelist[0], 60, 0):
-            if self.detectcollision(collidable)
-            self.move(20 * directionx, 20 * directiony)
+    def behaviour(self, collidablelist, player, directionx, directiony):
+        #test code, it's unreadable, and needs a change
+        if self.detectcollision(collidablelist, 20, 0) == False or self.detectcollision(collidablelist, -20, 0) == False or self.detectcollision(collidablelist, 0, -20) == False or self.detectcollision(collidablelist, 0, 20) == False :
+            if self.detectcollision([[player]], -60, 0) or self.detectcollision([[player]], 60, 0) or self.detectcollision([[player]], 0, -60) or self.detectcollision([[player]], 0, 60):
+                self.move(20 * directionx, 20 * directiony)
         
 
 class StairCase(Entity):
     def __init__(self, image, x, y, z, batch, group, health, atkdmg = 0):
         super().__init__(image, x, y, z, batch, group, health, atkdmg)
+
+
+
 #attributes from items should change attributes of player, or have special use cases.
 class Item(Entity):
     def __init__(self, image, x, y, z, batch, group, health, atkdmg):
         super().__init__(image, x, y, z, batch, group, health, atkdmg)
-class GUI(pyglet.shapes.Rectangle):
-    def __init__(self, x, y, width, height, color, batch=None, group=None):
-        super().__init__(x, y, width, height, color, batch, group) 
-    def WriteInfo(self):
-        pass
+        self.stats = []
+        self.name = "Item"
+#defining items, higher level of abstraction
+class Sword(Item):
+    def __init__(self, image, x, y, z, batch, group, health, atkdmg, strenght):
+        super().__init__(image, x, y, z, batch, group, health, atkdmg)
+        self.stats.append(strenght)
+        self.name = "Sword"
 
+class HealthPotion(Item):
+    def __init__(self, image, x, y, z, batch, group, health, atkdmg, wisdom):
+        super().__init__(image, x, y, z, batch, group, health, atkdmg)
+        self.stats.append(wisdom)
+        self.name = "Health Potion"
+
+class Antidote(Item):
+    def __init__(self, image, x, y, z, batch, group, health, atkdmg):
+        super().__init__(image, x, y, z, batch, group, health, atkdmg)
+
+class Bow(Item):
+    def __init__(self, image, x, y, z, batch, group, health, atkdmg):
+        super().__init__(image, x, y, z, batch, group, health, atkdmg)
+
+class Arrow(Item):
+    def __init__(self, image, x, y, z, batch, group, health, atkdmg):
+        super().__init__(image, x, y, z, batch, group, health, atkdmg)
+
+#this class should be a child class of batch, as it's just an agregation of different elements, but it works for now
+#so im leaving it this way
+        
+class GUI(pyglet.shapes.BorderedRectangle):
+    def __init__(self, x, y, width, height, border, color, equipment:list, player, border_color=..., batch=None, group=None):
+        super().__init__(x, y, width, height, border, color, border_color, batch, group)
+        self.equipment = equipment
+        self.player = player
+        self.guibatch = pyglet.graphics.Batch()
+        #need the image because pyglet buttons need images for some reason
+        self.buttonimage = tileset[43]
+        
+        self.WriteInfo()
+    def WriteInfo(self):
+        equipmentlistlabel = []
+        healthlabel = pyglet.text.Label(str(self.player.health),
+                          font_name='Times New Roman',
+                          font_size=12,
+                          x=self.x + 20, y=self.y + 700,
+                          anchor_x='center', anchor_y='center', batch=self.guibatch, group=bestground)
+        
+        characternamelabel = pyglet.text.Label(str(self.player.atkdmg),
+                          font_name='Times New Roman',
+                          font_size=12,
+                          x=self.x + 20, y=self.y + 680,
+                          anchor_x='center', anchor_y='center', batch=self.guibatch, group=bestground)
+        bruh = -1
+        
+        for i in self.equipment:
+            bruh += 1
+            equipmentlistlabel.append(pyglet.text.Label(str(i) + " [Use key '" + str(bruh + 1) + "']",
+                          font_name='Times New Roman',
+                          font_size=12,
+                          x=(self.x + 20), y=(self.y + 500) + (bruh * 20),
+                          anchor_x='left', anchor_y='bottom', batch=self.guibatch, group=bestground))
+
+            
+        self.draw()
+        self.guibatch.draw()
 
 #this class, and also the Tunnel class need a total rewrite, because it's really messy.
 #also, they probably should inherit from tileset
@@ -343,9 +445,13 @@ x = Main()
 batch = pyglet.graphics.Batch()
 background = pyglet.graphics.Group(order=0)
 foreground = pyglet.graphics.Group(order=1)
+bestground = pyglet.graphics.Group(order=2)
 
-
-
+#test
+backpack = []
+testplayer = Player(tileset[100],220, 220, 1, batch, foreground, 10, 10)
+# creating GUI
+testgui = GUI(960, 0, 320, 720, 10, (0, 0, 0),backpack, testplayer, (255, 0, 0), batch, foreground)
 #creating a testlevel
 
 startroom = Room(200, 200, 10, 10, batch, background, ["up"], [1])
@@ -355,15 +461,26 @@ tunnel2ndtoend = Tunnel(scndndroom.x1, scndndroom.y1 - 20, 1, -14, batch, backgr
 lastroom = Room(scndndroom.x1, scndndroom.y1 - (20*20), 6, 6, batch, background, ["up"], [1])
 
 #populating with entities
-testplayer = Player(tileset[100],220, 220, 1, batch, foreground, 10, 10)
 testtroll = Troll(tileset[255], lastroom.x4 + 20, lastroom.y4 - 20, 0.1, batch, foreground)
 testsnake = Snake(tileset[255], scndndroom.x4 + 40, scndndroom.y4 - 40, 0.1, batch, foreground)
 
+testitem = HealthPotion(tileset[238], startroom.x4 +20 , startroom.y4 - 20, 0.1, batch, foreground,1, 0, 10)
 teststaircase = StairCase(tileset[239], lastroom.x4 + 40, lastroom.y4 - 40, 0.1, batch, foreground, None)
+
 
 #aggregate collidables into one big array so we can detect collisions
 #ofc this will need optimization, but not needed for the tests
+
 collidablelist = []
+
+
+#this list is special, because it will be checked for destroyed enemies, this way we can easily del them
+enemycollidable = []
+
+#same here but with items
+itemcollidable = []
+
+
 for i in startroom.collidable:
     collidablelist.append(i)
 
@@ -376,9 +493,20 @@ for i in lastroom.collidable:
 collidablelist.append(tunnelstartto2nd.collidable)
 collidablelist.append(tunnel2ndtoend.collidable)
 collidablelist.append([teststaircase])
-collidablelist.append([testtroll])
-collidablelist.append([testsnake])
 
+itemcollidable.append([testitem])
+
+enemycollidable.append([testtroll])
+enemycollidable.append([testsnake])
+
+#remove all the entities that are appended to the table
+del testtroll
+del testsnake
+del testitem
+
+
+#testbutton.
 
 x.run()
+
 
