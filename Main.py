@@ -25,6 +25,7 @@ class Main(pyglet.window.Window):
             if len(testgui.equipment) >= 1:
                 print("tried using the potion")
                 testplayer.useitem(testgui.equipment[0])
+                testgui.ChangeColor(0, "green")
             else:
                 print("no item")
         #check health of every enemy
@@ -158,9 +159,10 @@ class TileSet():
 
 #entities should accept their coordinates in grid coordinates, not real coordinates
 class Entity(Tile):
-    def __init__(self, image, x, y, z, batch, group, health, atkdmg):
+    def __init__(self, image, x, y, z, batch, group, maxhealth, atkdmg):
         super().__init__(image, x, y, z, batch, group)
-        self.health = health
+        self.health = maxhealth
+        self.maxhealth = maxhealth
         self.atkdmg = atkdmg
     def move(self, xchange, ychange):
         self.x += xchange
@@ -192,8 +194,9 @@ class Entity(Tile):
         
 
 class Player(Entity):
-    def __init__(self, image, x, y, z, batch, group, health,atkdmg):
-        super().__init__(image, x, y, z,  batch, group, health, atkdmg)
+    def __init__(self, image, x, y, z, batch, group, maxhealth,atkdmg):
+        super().__init__(image, x, y, z,  batch, group, maxhealth, atkdmg)
+        self.health = self.maxhealth
         self.RandomizeStats()
         self.pickeditems = []
     def attack(self, other):
@@ -210,7 +213,7 @@ class Player(Entity):
                 return
         #this is a hack, all items have nearly 0 hp, so they "die" when picked up
         self.attack(other)
-        self.pickeditems.append(other.name)
+        self.pickeditems.append(other)
         print(self.pickeditems)
     def checktheinteraction(self, touched):
         if type(touched)==StairCase:
@@ -220,8 +223,19 @@ class Player(Entity):
         if issubclass(type(touched), Item):
             self.pickup(touched)
     def useitem(self, equipment):
-        self.pickeditems.remove(equipment)
-    
+        if equipment.name == "Health Potion":
+            self.pickeditems.remove(equipment)
+            self.health = self.maxhealth
+        else:
+            if equipment.used == False:
+                print("equiped item")
+                equipment.used = True
+                self.atkdmg += equipment.atkdmg
+            else:
+                print("deequiped item")
+                equipment.used = False
+                self.atkdmg -= equipment.atkdmg
+            
 
 
 class Enemy(Entity):
@@ -232,6 +246,8 @@ class Enemy(Entity):
     #this is the default behaviour for enemies
     def behaviour(self, collidablelist, player, directionx, directiony):
         pass
+
+
 #defining enemies
 #higher level  of abstraction
 #this enemy doesn't move, and only attacks the player when close
@@ -261,6 +277,8 @@ class Item(Entity):
         super().__init__(image, x, y, z, batch, group, health, atkdmg)
         self.stats = []
         self.name = "Item"
+        self.used = False
+
 #defining items, higher level of abstraction
 class Sword(Item):
     def __init__(self, image, x, y, z, batch, group, health, atkdmg, strenght):
@@ -298,9 +316,10 @@ class GUI(pyglet.shapes.BorderedRectangle):
         #need the image because pyglet buttons need images for some reason
         self.buttonimage = tileset[43]
         
+        self.labelcolor = []
         self.WriteInfo()
     def WriteInfo(self):
-        equipmentlistlabel = []
+        self.equipmentlistlabel = []
         healthlabel = pyglet.text.Label(str(self.player.health),
                           font_name='Times New Roman',
                           font_size=12,
@@ -316,15 +335,25 @@ class GUI(pyglet.shapes.BorderedRectangle):
         
         for i in self.equipment:
             bruh += 1
-            equipmentlistlabel.append(pyglet.text.Label(str(i) + " [Use key '" + str(bruh + 1) + "']",
+            self.labelcolor.append((255, 0, 0, 100))
+            self.equipmentlistlabel.append(pyglet.text.Label(str(i.name) + " [Use key '" + str(bruh + 1) + "']",
                           font_name='Times New Roman',
                           font_size=12,
-                          x=(self.x + 20), y=(self.y + 500) + (bruh * 20),
+                          x=(self.x + 20), y=(self.y + 500) + (bruh * -20),
+                          color = self.labelcolor[bruh],
                           anchor_x='left', anchor_y='bottom', batch=self.guibatch, group=bestground))
 
-            
+        
+
+        self.equipmentlistlabel
         self.draw()
         self.guibatch.draw()
+
+    def ChangeColor(self, num, color):
+        if color == "green":
+            self.labelcolor[num] = (0, 255, 0, 100)
+        if color == "red":
+            self.labelcolor[num] = (255, 0, 0, 100)
 
 #this class, and also the Tunnel class need a total rewrite, because it's really messy.
 #also, they probably should inherit from tileset
@@ -449,7 +478,7 @@ bestground = pyglet.graphics.Group(order=2)
 
 #test
 backpack = []
-testplayer = Player(tileset[100],220, 220, 1, batch, foreground, 10, 10)
+testplayer = Player(tileset[100],220, 220, 1, batch, bestground, 10, 10)
 # creating GUI
 testgui = GUI(960, 0, 320, 720, 10, (0, 0, 0),backpack, testplayer, (255, 0, 0), batch, foreground)
 #creating a testlevel
@@ -465,6 +494,7 @@ testtroll = Troll(tileset[255], lastroom.x4 + 20, lastroom.y4 - 20, 0.1, batch, 
 testsnake = Snake(tileset[255], scndndroom.x4 + 40, scndndroom.y4 - 40, 0.1, batch, foreground)
 
 testitem = HealthPotion(tileset[238], startroom.x4 +20 , startroom.y4 - 20, 0.1, batch, foreground,1, 0, 10)
+testsword = Sword(tileset[238], startroom.x4 + 20 , startroom.y4 - 60, 0.1, batch, foreground,1, 20, 10)
 teststaircase = StairCase(tileset[239], lastroom.x4 + 40, lastroom.y4 - 40, 0.1, batch, foreground, None)
 
 
@@ -495,6 +525,7 @@ collidablelist.append(tunnel2ndtoend.collidable)
 collidablelist.append([teststaircase])
 
 itemcollidable.append([testitem])
+itemcollidable.append([testsword])
 
 enemycollidable.append([testtroll])
 enemycollidable.append([testsnake])
