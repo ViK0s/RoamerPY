@@ -21,6 +21,8 @@ class Main(pyglet.window.Window):
     #also, there's way too many nests here, it's hard to read
     def on_key_press(self, symbol, modifiers):
         testgui.equipment = testplayer.pickeditems
+        testplayer.Checkforpoison()
+        
         if symbol == key.NUM_1:
             try:
                 if testgui.equipment[0]:
@@ -34,10 +36,51 @@ class Main(pyglet.window.Window):
                 testplayer.useitem(testgui.equipment[1], 1)
             else:
                 print("no item")
+        if symbol == key.NUM_3:
+            if testgui.equipment[2]:
+                testplayer.useitem(testgui.equipment[2], 2)
+            else:
+                print("no item")
         
-        
-        
-        
+        #do a throw, modifier 18 means that CTRL was pressed
+        for i in testplayer.pickeditems:
+            if symbol == key.A and modifiers == 18 and type(i) == Sword:
+                testplayer.pickeditems.remove(i)
+                print("tried throwing the sword")
+                #swords should kill on hit
+                testplayer.atkdmg = 100
+                testplayer.detectcollision(enemycollidable, -20, 0) 
+                testplayer.detectcollision(enemycollidable, -40, 0)
+                testplayer.detectcollision(enemycollidable, -60, 0)
+                testplayer.atkdmg = testplayer.atkdmgbase
+            if symbol == key.W and modifiers == 18 and type(i) == Sword:
+                testplayer.pickeditems.remove(i)
+                print("tried throwing the sword")
+                #swords should kill on hit
+                testplayer.atkdmg = 100
+                testplayer.detectcollision(enemycollidable, 0, -20) 
+                testplayer.detectcollision(enemycollidable, 0, -40)
+                testplayer.detectcollision(enemycollidable, 0, -60)
+                testplayer.atkdmg = testplayer.atkdmgbase
+            if symbol == key.S and modifiers == 18 and type(i) == Sword:
+                testplayer.pickeditems.remove(i)
+                print("tried throwing the sword")
+                #swords should kill on hit
+                testplayer.atkdmg = 100
+                testplayer.detectcollision(enemycollidable, 0, 20) 
+                testplayer.detectcollision(enemycollidable, 0, 40)
+                testplayer.detectcollision(enemycollidable, 0, 60)
+                testplayer.atkdmg = testplayer.atkdmgbase
+            if symbol == key.D and modifiers == 18 and type(i) == Sword:
+                testplayer.pickeditems.remove(i)
+                print("tried throwing the sword")
+                #swords should kill on hit
+                testplayer.atkdmg = 100
+                testplayer.detectcollision(enemycollidable, 20, 0) 
+                testplayer.detectcollision(enemycollidable, 40, 0)
+                testplayer.detectcollision(enemycollidable, 60, 0)
+                testplayer.atkdmg = testplayer.atkdmgbase
+
         #check health of every enemy
         for enemy in enemycollidable:
             if enemy[0].health <= 0:
@@ -209,11 +252,11 @@ class Player(Entity):
         self.health = self.maxhealth
         self.RandomizeStats()
         self.pickeditems = []
+        self.poisoned = False
+        self.atkdmgbase = atkdmg
     def attack(self, other):
         other.health -= self.atkdmg
         other.checkdelete()
-        #this is a hack so that we will also get dmg when attacked, but this should be done inside Enemy class, not here
-        print(other.health)
     def pickup(self, other):
         bruh = -1
         for i in other.stats:
@@ -236,6 +279,9 @@ class Player(Entity):
         if equipment.name == "Health Potion":
             self.pickeditems.remove(equipment)
             self.health = self.maxhealth
+        elif equipment.name == "Antidote":
+            self.pickeditems.remove(equipment)
+            self.poisoned = False
         else:
             if equipment.used == False:
                 print("equiped item")
@@ -247,7 +293,9 @@ class Player(Entity):
                 equipment.used = False
                 self.atkdmg -= equipment.atkdmg
                 testgui.ChangeColor(pos, "red")
-
+    def Checkforpoison(self):
+        if self.poisoned:
+            self.health -= 2
 
 class Enemy(Entity):
     def __init__(self, image, x, y, z, batch, group, health, atkdmg):
@@ -274,7 +322,11 @@ class Snake(Enemy):
         if self.detectcollision(collidablelist, 20, 0) == False or self.detectcollision(collidablelist, -20, 0) == False or self.detectcollision(collidablelist, 0, -20) == False or self.detectcollision(collidablelist, 0, 20) == False :
             if self.detectcollision([[player]], -60, 0) or self.detectcollision([[player]], 60, 0) or self.detectcollision([[player]], 0, -60) or self.detectcollision([[player]], 0, 60):
                 self.move(20 * directionx, 20 * directiony)
-        
+    def attack(self, other):
+        other.health -= self.atkdmg
+        other.checkdelete()
+        other.poisoned = True
+        print(other.health)   
 
 class StairCase(Entity):
     def __init__(self, image, x, y, z, batch, group, health, atkdmg = 0):
@@ -304,17 +356,10 @@ class HealthPotion(Item):
         self.name = "Health Potion"
 
 class Antidote(Item):
-    def __init__(self, image, x, y, z, batch, group, health, atkdmg):
+    def __init__(self, image, x, y, z, batch, group, health, atkdmg, wisdom):
         super().__init__(image, x, y, z, batch, group, health, atkdmg)
-
-class Bow(Item):
-    def __init__(self, image, x, y, z, batch, group, health, atkdmg):
-        super().__init__(image, x, y, z, batch, group, health, atkdmg)
-
-class Arrow(Item):
-    def __init__(self, image, x, y, z, batch, group, health, atkdmg):
-        super().__init__(image, x, y, z, batch, group, health, atkdmg)
-
+        self.stats.append(wisdom)
+        self.name = "Antidote"
 #this class should be a child class of batch, as it's just an agregation of different elements, but it works for now
 #so im leaving it this way
         
@@ -366,7 +411,13 @@ class GUI(pyglet.shapes.BorderedRectangle):
                           color = self.labelcolor[bruh],
                           anchor_x='left', anchor_y='bottom', batch=self.guibatch, group=bestground))
 
-        
+        if self.player.poisoned:
+            poisonedinfo = pyglet.text.Label("Poisoned!",
+                          font_name='Times New Roman',
+                          font_size=12,
+                          x=self.x + 20, y=self.y + 640,
+                          color = (191, 255, 0, 100),
+                          anchor_x='left', anchor_y='bottom', batch=self.guibatch, group=bestground)
 
         self.equipmentlistlabel
         self.draw()
@@ -501,7 +552,7 @@ bestground = pyglet.graphics.Group(order=2)
 
 #test
 backpack = []
-testplayer = Player(tileset[100],220, 220, 1, batch, bestground, 10, 10)
+testplayer = Player(tileset[100],220, 220, 1, batch, bestground, 30, 10)
 # creating GUI
 testgui = GUI(960, 0, 320, 720, 10, (0, 0, 0),backpack, testplayer, (255, 0, 0), batch, foreground)
 #creating a testlevel
@@ -519,7 +570,7 @@ testsnake = Snake(tileset[255], scndndroom.x4 + 40, scndndroom.y4 - 40, 0.1, bat
 testitem = HealthPotion(tileset[238], startroom.x4 +20 , startroom.y4 - 20, 0.1, batch, foreground,1, 0, 10)
 testsword = Sword(tileset[238], startroom.x4 + 20 , startroom.y4 - 60, 0.1, batch, foreground,1, 20, 10)
 teststaircase = StairCase(tileset[239], lastroom.x4 + 40, lastroom.y4 - 40, 0.1, batch, foreground, None)
-
+testantidote = Antidote(tileset[238], startroom.x4 + 40 , startroom.y4 - 40, 0.1, batch, foreground,1, 0, 10)
 
 #aggregate collidables into one big array so we can detect collisions
 #ofc this will need optimization, but not needed for the tests
@@ -549,6 +600,7 @@ collidablelist.append([teststaircase])
 
 itemcollidable.append([testitem])
 itemcollidable.append([testsword])
+itemcollidable.append([testantidote])
 
 enemycollidable.append([testtroll])
 enemycollidable.append([testsnake])
