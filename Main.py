@@ -49,9 +49,9 @@ class Main(pyglet.window.Window):
                 print("tried throwing the sword")
                 #swords should kill on hit
                 testplayer.atkdmg = 100
-                testplayer.detectcollision(enemycollidable, -20, 0) 
-                testplayer.detectcollision(enemycollidable, -40, 0)
-                testplayer.detectcollision(enemycollidable, -60, 0)
+                testplayer.detectcollision(enemycollidable, 20, 0) 
+                testplayer.detectcollision(enemycollidable, 40, 0)
+                testplayer.detectcollision(enemycollidable, 60, 0)
                 testplayer.atkdmg = testplayer.atkdmgbase
             if symbol == key.W and modifiers == 18 and type(i) == Sword:
                 testplayer.pickeditems.remove(i)
@@ -76,9 +76,9 @@ class Main(pyglet.window.Window):
                 print("tried throwing the sword")
                 #swords should kill on hit
                 testplayer.atkdmg = 100
-                testplayer.detectcollision(enemycollidable, 20, 0) 
-                testplayer.detectcollision(enemycollidable, 40, 0)
-                testplayer.detectcollision(enemycollidable, 60, 0)
+                testplayer.detectcollision(enemycollidable, -20, 0) 
+                testplayer.detectcollision(enemycollidable, -40, 0)
+                testplayer.detectcollision(enemycollidable, -60, 0)
                 testplayer.atkdmg = testplayer.atkdmgbase
 
         #check health of every enemy
@@ -162,7 +162,10 @@ class Main(pyglet.window.Window):
             event = self.dispatch_events()
     def pre_render(self):
         pass  
-
+    def on_close(self):
+        pyglet.app.exit()
+        self.active = 0
+        self.close()
 #a bit of a syntactic sugar, but makes it way easier to define which sprite is doing what
 class Tile(pyglet.sprite.Sprite):
     def __init__(self, img, x, y, z, batch, group):
@@ -217,6 +220,7 @@ class Entity(Tile):
         self.health = maxhealth
         self.maxhealth = maxhealth
         self.atkdmg = atkdmg
+        self.dead = False
     def move(self, xchange, ychange):
         self.x += xchange
         self.y += ychange 
@@ -234,6 +238,7 @@ class Entity(Tile):
         pass
     def checkdelete(self):
         if self.health <= 0:
+            self.dead = True
             self.__del__()
     def attack(self, other):
         other.health -= self.atkdmg
@@ -249,11 +254,15 @@ class Entity(Tile):
 class Player(Entity):
     def __init__(self, image, x, y, z, batch, group, maxhealth,atkdmg):
         super().__init__(image, x, y, z,  batch, group, maxhealth, atkdmg)
-        self.health = self.maxhealth
         self.RandomizeStats()
+        self.maxhealth += self.stats[4]
+        self.health = self.maxhealth
         self.pickeditems = []
         self.poisoned = False
+        atkdmg += self.stats[0]
         self.atkdmgbase = atkdmg
+        self.level = 1
+        self.win = False
     def attack(self, other):
         other.health -= self.atkdmg
         other.checkdelete()
@@ -270,9 +279,16 @@ class Player(Entity):
         print(self.pickeditems)
     def checktheinteraction(self, touched):
         if type(touched)==StairCase:
-            print("going next level lol")
+            ClearLevel()
+            self.level += 1
+            if self.level == 2:
+                LevelTwo()
+            if self.level == 3:
+                LevelThree()
+            if self.level == 4:
+                self.win = True 
         if issubclass(type(touched), Enemy):
-            self.attack(touched)    
+            self.attack(touched)
         if issubclass(type(touched), Item):
             self.pickup(touched)
     def useitem(self, equipment, pos):
@@ -325,7 +341,8 @@ class Snake(Enemy):
     def attack(self, other):
         other.health -= self.atkdmg
         other.checkdelete()
-        other.poisoned = True
+        if other.stats[4] < 15: 
+            other.poisoned = True
         print(other.health)   
 
 class StairCase(Entity):
@@ -376,6 +393,33 @@ class GUI(pyglet.shapes.BorderedRectangle):
         self.WriteInfo()
     def WriteInfo(self):
         self.equipmentlistlabel = []
+        
+        if self.player.dead:
+            loselabel = pyglet.text.Label("You lose",
+                          font_name='Times New Roman',
+                          font_size=12,
+                          x=640, y=360,
+                          anchor_x='center', anchor_y='center', batch=self.guibatch, group=bestground)
+            #this probably shouldn't be here
+            ClearLevel()
+            def callback(lol):
+                pyglet.app.exit()
+                x.active = 0
+                x.close()
+            pyglet.clock.schedule_interval(callback, 3)
+        
+        if self.player.win:
+            winlabel = pyglet.text.Label("You win!",
+                          font_name='Times New Roman',
+                          font_size=12,
+                          x=640, y=360,
+                          anchor_x='center', anchor_y='center', batch=self.guibatch, group=bestground)
+            def callback(lol):
+                pyglet.app.exit()
+                x.active = 0
+                x.close()
+            pyglet.clock.schedule_interval(callback, 3)
+        
         healthlabel = pyglet.text.Label("Health: " + str(self.player.health),
                           font_name='Times New Roman',
                           font_size=12,
@@ -419,6 +463,8 @@ class GUI(pyglet.shapes.BorderedRectangle):
                           color = (191, 255, 0, 100),
                           anchor_x='left', anchor_y='bottom', batch=self.guibatch, group=bestground)
 
+        
+        
         self.equipmentlistlabel
         self.draw()
         self.guibatch.draw()
@@ -460,7 +506,7 @@ class Room():
 
     def CreateRoom(self):
         bottomwall = TileSet(tileset[66], self.x, self.y, self.width, 1, self.batch, self.group)
-        floor = TileSet(tileset[249], bottomwall.x + 20, bottomwall.y + 20, self.width - 2, self.height - 2, self.batch, self.group)
+        floor = TileSet(tileset[9], bottomwall.x + 20, bottomwall.y + 20, self.width - 2, self.height - 2, self.batch, self.group)
         leftwall = TileSet(tileset[66], bottomwall.x4, bottomwall.y4, 1, self.height - 2, self.batch, self.group)
         rightwall = TileSet(tileset[66], bottomwall.x3-20, bottomwall.y3, 1, self.height - 2, self.batch, self.group)
         topwall = TileSet(tileset[66], leftwall.x4 , leftwall.y4, self.width, 1, self.batch, self.group)
@@ -479,6 +525,8 @@ class Room():
                 del self.collidable[2][self.tilenum[bruh]]
             if i == "down":
                 del self.collidable[0][self.tilenum[bruh]]
+            if i =="right":
+                del self.collidable[1][self.tilenum[bruh]]
 class Tunnel():
     def __init__(self, xstart, ystart, xend, yend, batch, group, start:str):
         self.xstart = xstart
@@ -552,7 +600,7 @@ bestground = pyglet.graphics.Group(order=2)
 
 #test
 backpack = []
-testplayer = Player(tileset[100],220, 220, 1, batch, bestground, 30, 10)
+testplayer = Player(tileset[242],220, 220, 1, batch, bestground, 30, 10)
 # creating GUI
 testgui = GUI(960, 0, 320, 720, 10, (0, 0, 0),backpack, testplayer, (255, 0, 0), batch, foreground)
 #creating a testlevel
@@ -563,8 +611,14 @@ scndndroom = Room(startroom.x4 + (20* 20), startroom.y4 + (10*10), 10, 10, batch
 tunnel2ndtoend = Tunnel(scndndroom.x1, scndndroom.y1 - 20, 1, -14, batch, background, "s")
 lastroom = Room(scndndroom.x1, scndndroom.y1 - (20*20), 6, 6, batch, background, ["up"], [1])
 
+roomlist = []
+roomlist.append(startroom)
+roomlist.append(scndndroom)
+roomlist.append(tunnel2ndtoend)
+roomlist.append(lastroom)
+roomlist.append(tunnelstartto2nd)
 #populating with entities
-testtroll = Troll(tileset[255], lastroom.x4 + 20, lastroom.y4 - 20, 0.1, batch, foreground)
+testtroll = Troll(tileset[241], lastroom.x4 + 20, lastroom.y4 - 20, 0.1, batch, foreground)
 testsnake = Snake(tileset[255], scndndroom.x4 + 40, scndndroom.y4 - 40, 0.1, batch, foreground)
 
 testitem = HealthPotion(tileset[238], startroom.x4 +20 , startroom.y4 - 20, 0.1, batch, foreground,1, 0, 10)
@@ -584,6 +638,8 @@ enemycollidable = []
 #same here but with items
 itemcollidable = []
 
+#python clears code really agressivley, which sometimes means that our stuff won't be drawn, that's why we also need this list
+noncollidablelist = []
 
 for i in startroom.collidable:
     collidablelist.append(i)
@@ -605,13 +661,194 @@ itemcollidable.append([testantidote])
 enemycollidable.append([testtroll])
 enemycollidable.append([testsnake])
 
+#little hack to get position of the room
+globalx = scndndroom.x1
+globaly = scndndroom.y1
+
 #remove all the entities that are appended to the table
 del testtroll
 del testsnake
+
 del testitem
+del testsword
+del testantidote
+
+del startroom
+del tunnelstartto2nd
+del scndndroom
+del tunnel2ndtoend
+del lastroom
+del teststaircase
 
 
-#testbutton.
+
+def ClearLevel():
+    collidablelist.clear()
+    itemcollidable.clear()
+    enemycollidable.clear()
+    roomlist.clear()
+    noncollidablelist.clear()
+    
+
+#creating level 2, starting from the top, the starting room, ending with the last room
+def LevelTwo():
+    #create level layout
+    startroomlvl2 = Room(globalx, globaly - (20*20), 6, 6, batch, background, ["up"], [1])
+    tunnelstartto2ndlvl2 = Tunnel(startroomlvl2.x4, startroomlvl2.y4, 1, 15, batch, background, "s")
+
+    scndndroomlvl2 = Room(startroomlvl2.x4 - 60, startroomlvl2.y4 + (15*20), 6, 6, batch, background, ["left", "down"], [2, 4])
+    sideroom1lvl2 = Room(scndndroomlvl2.x2, scndndroomlvl2.y2 - (20*7), 7, 7, batch, background, ["left"], [4])
+    
+    
+    thirdroomlvl2 = Room(sideroom1lvl2.x1 - 200, sideroom1lvl2.y1 - 80, 5, 5, batch, background, ["up", "left"], [1, 2])
+
+    tunnelscndtothirdlvl2 = Tunnel(thirdroomlvl2.x4, thirdroomlvl2.y4, 4, 11, batch, background, "s")
+
+    lastroomlvl2 = Room(thirdroomlvl2.x1 - 400, thirdroomlvl2.y1, 10, 10, batch, background, ["right"], [2])
+
+    tunnelthirdtolastlvl2 = Tunnel(lastroomlvl2.x3, lastroomlvl2.y3 - (20*6), 10, 1, batch, background, "s")
+    block = Tile(tileset[67], lastroomlvl2.x3 + 20, lastroomlvl2.y3 - (20*8), 0.1, batch, background)
+
+    #populate with enemies
+    snake1 = Snake(tileset[255], scndndroomlvl2.x3 - 40, scndndroomlvl2.y3 - 40, 0.1, batch, foreground)
+    snake2 = Snake(tileset[255], scndndroomlvl2.x1 + 20, scndndroomlvl2.y1 + 20, 0.1, batch, foreground)
+    troll1 = Troll(tileset[241], lastroomlvl2.x2, lastroomlvl2.y2 + 60, 0.1, batch, foreground)
+
+    #populate with items
+    healthpot = HealthPotion(tileset[238], startroomlvl2.x2 - 40 , startroomlvl2.y2 + 20, 0.1, batch, foreground,1, 0, 16)
+    sword = Sword(tileset[238], startroomlvl2.x1 + 20 , startroomlvl2.y1 + 20, 0.1, batch, foreground,1, 20, 10)
+    antidote = Antidote(tileset[238], sideroom1lvl2.x4 + 40 , sideroom1lvl2.y4 - 40, 0.1, batch, foreground,1, 0, 10)
+    sword2 = Sword(tileset[238], thirdroomlvl2.x1 + 20 , thirdroomlvl2.y1 + 20, 0.1, batch, foreground,1, 20, 10)
+
+    staircase = StairCase(tileset[239], lastroomlvl2.x4 + 20, lastroomlvl2.y4 - 40, 0.1, batch, foreground, None)
+    print(staircase.x, staircase.y)
+    #append collidables
+    for i in startroomlvl2.collidable:
+        collidablelist.append(i)
+
+    collidablelist.append(tunnelstartto2ndlvl2.collidable)
+    
+    for i in scndndroomlvl2.collidable:
+        collidablelist.append(i)
+
+    for i in sideroom1lvl2.collidable:
+        collidablelist.append(i)
+    
+    collidablelist.append(tunnelscndtothirdlvl2.collidable)
+
+    for i in thirdroomlvl2.collidable:
+        collidablelist.append(i)
+
+    for i in lastroomlvl2.collidable:
+        collidablelist.append(i)
+
+    collidablelist.append(tunnelthirdtolastlvl2.collidable)
+    collidablelist.append([block])
+    
+    #append noncollidables so they are not deleted by python
+    noncollidablelist.append(startroomlvl2.noncollidable)
+    noncollidablelist.append(tunnelstartto2ndlvl2.noncollidable)
+    noncollidablelist.append(scndndroomlvl2.noncollidable)
+    noncollidablelist.append(sideroom1lvl2.noncollidable)
+    noncollidablelist.append(thirdroomlvl2.noncollidable)
+    noncollidablelist.append(tunnelscndtothirdlvl2.noncollidable)
+    noncollidablelist.append(lastroomlvl2.noncollidable)
+    noncollidablelist.append(tunnelthirdtolastlvl2.noncollidable)
+
+    #append items into itemcollidables
+    itemcollidable.append([healthpot])
+    itemcollidable.append([sword])
+    itemcollidable.append([sword2])
+    itemcollidable.append([antidote])
+    
+    collidablelist.append([staircase])
+
+    #append enemies into enemycollidable
+    enemycollidable.append([snake1])
+    enemycollidable.append([snake2])
+    enemycollidable.append([troll1])
+
+
+    del block
+    del startroomlvl2
+    del tunnelstartto2ndlvl2
+    del scndndroomlvl2
+    del sideroom1lvl2
+    del thirdroomlvl2
+    del tunnelscndtothirdlvl2
+    del lastroomlvl2
+    del tunnelthirdtolastlvl2
+    del healthpot
+    del sword
+    del sword2
+    del staircase
+    del snake1
+    del snake2
+    del troll1
+
+def LevelThree():
+    #create level layout
+    startroom3lvl = Room(60, 280, 20, 20, batch, background, ["right"], [1])
+    
+    tunnelfirstto2nd3lvl = Tunnel(startroom3lvl.x2, startroom3lvl.y2 + 60, 7, 1, batch, background, "s")
+    blocklvl3 = Tile(tileset[67], startroom3lvl.x2 + 20, startroom3lvl.y2 + 20, 0.1, batch, background)
+
+    scndroom3lvl = Room(startroom3lvl.x2 + (20*6), startroom3lvl.y2, 4, 4, batch, background, ["down", "left"], [2, 1])
+    
+    tunnel2ndtoendlvl3 = Tunnel(scndroom3lvl.x1 + 20, scndroom3lvl.y1 - 20, 1, -3, batch, background, "s")
+
+    lastroom3lvl = Room(globalx, globaly - (20*20), 6, 6, batch, background, ["up"], [1])
+    
+    #populating with items
+    healthpot1 = HealthPotion(tileset[238], startroom3lvl.x4 + 20, startroom3lvl.y4 - 40, 0.1, batch, foreground, 1, 0, 18)
+    healthpot2 = HealthPotion(tileset[238], startroom3lvl.x4 + 20, startroom3lvl.y4 - 60, 0.1, batch, foreground, 1, 0, 18)
+    healthpot3 = HealthPotion(tileset[238], startroom3lvl.x4 + 40, startroom3lvl.y4 - 40, 0.1, batch, foreground, 1, 0, 18)
+    sword1 = Sword(tileset[238], startroom3lvl.x1 + 20, startroom3lvl.y1 + 20, 0.1, batch, foreground, 1, 0, 12)
+
+    laststaircase = StairCase(tileset[239], lastroom3lvl.x2 - 40, lastroom3lvl.y2 + 20, 0.1, batch, foreground, 1)
+    #populating with enemies
+    troll1 = Troll(tileset[241], startroom3lvl.x2 - 20, startroom3lvl.y2 + 20, 0.1, batch, foreground)
+    troll2 = Troll(tileset[241], startroom3lvl.x2 - 20, startroom3lvl.y2 + 40, 0.1, batch, foreground)
+    troll3 = Troll(tileset[241], startroom3lvl.x2 - 20, startroom3lvl.y2 + 60, 0.1, batch, foreground)
+    troll4 = Troll(tileset[241], startroom3lvl.x2, startroom3lvl.y2 + 40, 0.1, batch, foreground)
+    troll5 = Troll(tileset[241], startroom3lvl.x2 + 20, startroom3lvl.y2 + 40, 0.1, batch, foreground)
+
+    #append collidables
+    for i in startroom3lvl.collidable:
+        collidablelist.append(i)
+
+    collidablelist.append(tunnelfirstto2nd3lvl.collidable)
+    collidablelist.append([blocklvl3])
+
+    for i in scndroom3lvl.collidable:
+        collidablelist.append(i)
+
+    collidablelist.append(tunnel2ndtoendlvl3.collidable)
+
+    for i in lastroom3lvl.collidable:
+        collidablelist.append(i)
+    
+    collidablelist.append([laststaircase])
+    #append enemies
+    enemycollidable.append([troll1])
+    enemycollidable.append([troll2])
+    enemycollidable.append([troll3])
+    enemycollidable.append([troll4])
+    enemycollidable.append([troll5])
+
+    #append items
+    itemcollidable.append([healthpot1])
+    itemcollidable.append([healthpot2])
+    itemcollidable.append([healthpot3])
+    itemcollidable.append([sword1])
+    
+    #append non collidables so python doesn't del them
+    noncollidablelist.append(startroom3lvl.noncollidable)
+    noncollidablelist.append(tunnelfirstto2nd3lvl.noncollidable)
+    noncollidablelist.append(scndroom3lvl.noncollidable)
+    noncollidablelist.append(tunnel2ndtoendlvl3.noncollidable)
+    noncollidablelist.append(lastroom3lvl.noncollidable)
+
 
 x.run()
 
