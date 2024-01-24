@@ -41,7 +41,36 @@ class Main(pyglet.window.Window):
                 testplayer.useitem(testgui.equipment[2], 2)
             else:
                 print("no item")
-        
+        if symbol == key.NUM_4:
+            if testgui.equipment[2]:
+                testplayer.useitem(testgui.equipment[2], 2)
+            else:
+                print("no item")
+        if symbol == key.NUM_5:
+            if testgui.equipment[2]:
+                testplayer.useitem(testgui.equipment[2], 2)
+            else:
+                print("no item")
+        if symbol == key.NUM_6:
+            if testgui.equipment[2]:
+                testplayer.useitem(testgui.equipment[2], 2)
+            else:
+                print("no item")
+        if symbol == key.NUM_7:
+            if testgui.equipment[2]:
+                testplayer.useitem(testgui.equipment[2], 2)
+            else:
+                print("no item")
+        if symbol == key.NUM_8:
+            if testgui.equipment[2]:
+                testplayer.useitem(testgui.equipment[2], 2)
+            else:
+                print("no item")
+        if symbol == key.NUM_9:
+            if testgui.equipment[2]:
+                testplayer.useitem(testgui.equipment[2], 2)
+            else:
+                print("no item")
         #do a throw, modifier 18 means that CTRL was pressed
         for i in testplayer.pickeditems:
             if symbol == key.A and modifiers == 18 and type(i) == Sword:
@@ -310,8 +339,10 @@ class Player(Entity):
                 self.atkdmg -= equipment.atkdmg
                 testgui.ChangeColor(pos, "red")
     def Checkforpoison(self):
+        self.checkdelete()
         if self.poisoned:
             self.health -= 2
+            
 
 class Enemy(Entity):
     def __init__(self, image, x, y, z, batch, group, health, atkdmg):
